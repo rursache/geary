@@ -12,7 +12,7 @@
  */
 public class Application.Client : Gtk.Application {
 
-    public const string NAME = "Geary" + Config.NAME_SUFFIX;
+    public const string NAME = "Geary (rursache fork)" + Config.NAME_SUFFIX;
     public const string RESOURCE_BASE_PATH = "/org/gnome/Geary";
     public const string SCHEMA_ID = "org.gnome.Geary";
     public const string DESCRIPTION = _("Send and receive email");

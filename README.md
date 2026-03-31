@@ -13,10 +13,22 @@ straight-forward, modern interface.
 ## Changes in this fork
 
 - **Resizable panes**: Replaced the responsive Handy leaflet layout with fixed GtkPaned panels, allowing the folder list, conversation list, and conversation viewer to be resized by dragging the dividers. Pane positions are saved and restored between sessions.
-- **Always load remote images**: Added a global preference to always load remote images in all emails, bypassing per-sender authentication checks.
+- **Always load remote images**: Added a single, unified preference to always load remote images in all emails, replacing the previous two separate toggles.
 - **Override HTML email colors**: Added a preference to override original colors in HTML emails for better integration with the app theme.
-- **Merged image loading options**: Consolidated the two separate remote image loading toggles into a single, clear preference.
-- **Minimum pane widths**: Set minimum widths for each section (sidebar: 100px, mail list: 200px, mail detail: 300px) to prevent panels from collapsing.
+
+## Building & Installing
+
+Install dependencies (Arch Linux):
+
+```bash
+sudo pacman -S --needed webkit2gtk-4.1 libhandy gspell gmime3 gsound libpeas-2 libytnef folks git vala gobject-introspection itstool meson ninja
+```
+
+Build and install:
+
+```bash
+./build_and_install.sh -i
+```
 
 ## Original project
 
