@@ -47,6 +47,9 @@ if [ "$1" = "--install" ] || [ "$1" = "-i" ]; then
     echo "==> Updating desktop database..."
     sudo update-desktop-database /usr/share/applications/
 
+    echo "==> Updating icon cache..."
+    sudo gtk-update-icon-cache -f /usr/share/icons/hicolor/
+
     echo "==> Installed! Restart Geary to see changes."
 else
     echo "==> Run with --install (-i) to install system-wide"
