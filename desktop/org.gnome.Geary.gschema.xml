@@ -115,6 +115,24 @@
         <description>Images from these domains will be trusted</description>
     </key>
 
+    <key name="folder-pane-position" type="i">
+        <default>250</default>
+        <summary>Folder pane position</summary>
+        <description>The width in pixels of the folder list pane.</description>
+    </key>
+
+    <key name="conversation-pane-position" type="i">
+        <default>700</default>
+        <summary>Conversation pane position</summary>
+        <description>The position in pixels of the divider between conversation list and viewer.</description>
+    </key>
+
+    <key name="always-load-remote-images" type="b">
+        <default>false</default>
+        <summary>Always load remote images</summary>
+        <description>True to always load remote images for all emails.</description>
+    </key>
+
     <key name="undo-send-delay" type="i">
         <default>5</default>
         <summary>Undo sending email delay</summary>

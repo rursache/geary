@@ -164,16 +164,16 @@ public class Components.PreferencesWindow : Hdy.PreferencesWindow {
         startup_notifications_row.activatable_widget = startup_notifications;
         startup_notifications_row.add(startup_notifications);
 
-        var trust_images = new Gtk.Switch();
-        trust_images.valign = CENTER;
+        var always_load_remote_images = new Gtk.Switch();
+        always_load_remote_images.valign = CENTER;
 
-        var trust_images_row = new Hdy.ActionRow();
+        var always_load_remote_images_row = new Hdy.ActionRow();
         /// Translators: Preferences label
-        trust_images_row.title = _("_Always load images");
-        trust_images_row.subtitle = _("Showing remote images allows the sender to track you");
-        trust_images_row.use_underline = true;
-        trust_images_row.activatable_widget = trust_images;
-        trust_images_row.add(trust_images);
+        always_load_remote_images_row.title = _("_Always load remote images");
+        always_load_remote_images_row.subtitle = _("Showing remote images allows the sender to track you");
+        always_load_remote_images_row.use_underline = true;
+        always_load_remote_images_row.activatable_widget = always_load_remote_images;
+        always_load_remote_images_row.add(always_load_remote_images);
 
         var unset_html_colors = new Gtk.Switch();
         unset_html_colors.valign = CENTER;
@@ -195,7 +195,7 @@ public class Components.PreferencesWindow : Hdy.PreferencesWindow {
         group.add(display_preview_row);
         group.add(single_key_shortucts_row);
         group.add(startup_notifications_row);
-        group.add(trust_images_row);
+        group.add(always_load_remote_images_row);
         group.add(unset_html_colors_row);
 
         var page = new Hdy.PreferencesPage();
@@ -234,12 +234,10 @@ public class Components.PreferencesWindow : Hdy.PreferencesWindow {
                 startup_notifications,
                 "state"
             );
-            config.bind_with_mapping(
-                Application.Configuration.IMAGES_TRUSTED_DOMAINS,
-                trust_images,
-                "state",
-                (GLib.SettingsBindGetMappingShared) settings_trust_images_getter,
-                (GLib.SettingsBindSetMappingShared) settings_trust_images_setter
+            config.bind(
+                Application.Configuration.ALWAYS_LOAD_REMOTE_IMAGES,
+                always_load_remote_images,
+                "state"
             );
             config.bind(
                 Application.Configuration.UNSET_HTML_COLORS,
@@ -278,17 +276,4 @@ public class Components.PreferencesWindow : Hdy.PreferencesWindow {
         close();
     }
 
-    private static bool settings_trust_images_getter(GLib.Value value, GLib.Variant variant, void* user_data) {
-        var domains = variant.get_strv();
-        value.set_boolean(domains.length > 0 && domains[0] == "*");
-        return true;
-    }
-
-    private static GLib.Variant settings_trust_images_setter(GLib.Value value, GLib.VariantType expected_type, void* user_data) {
-        var trusted = value.get_boolean();
-        string[] values = {};
-        if (trusted)
-            values += "*";
-        return new GLib.Variant.strv(values);
-    }
 }

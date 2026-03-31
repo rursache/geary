@@ -49,8 +49,8 @@ public class FolderList.Tree : Sidebar.Tree, Geary.BaseInterface {
     }
 
     public override void get_preferred_width(out int minimum_size, out int natural_size) {
-        minimum_size = 360;
-        natural_size = 500;
+        minimum_size = 100;
+        natural_size = 250;
     }
 
     public void set_has_new(Geary.Folder folder, bool has_new) {

@@ -67,8 +67,7 @@ public class Application.MainWindow :
         { ACTION_ZOOM, on_zoom, "s" },
     };
 
-    // Handy leaflet children names
-    private const string INNER_LEAFLET = "inner_leaflet";
+    // Pane child names (kept for reference)
     private const string FOLDER_LIST = "folder_list";
     private const string CONVERSATION_LIST = "conversation_list";
     private const string CONVERSATION_VIEWER = "conversation_viewer";
@@ -298,39 +297,19 @@ public class Application.MainWindow :
         get; private set; default = null;
     }
 
-    /** Specifies if the conversation list is currently displayed. */
+    /** Specifies if the folder list is currently displayed. */
     public bool is_folder_list_shown {
-        get {
-            return (
-                (!this.outer_leaflet.folded ||
-                 this.outer_leaflet.visible_child_name == INNER_LEAFLET) &&
-                (!this.inner_leaflet.folded ||
-                 this.inner_leaflet.visible_child_name == FOLDER_LIST)
-            );
-        }
+        get { return true; }
     }
 
     /** Specifies if the conversation list is currently displayed. */
     public bool is_conversation_list_shown {
-        get {
-            return (
-                (!this.outer_leaflet.folded ||
-                 this.outer_leaflet.visible_child_name == INNER_LEAFLET) &&
-                (!this.inner_leaflet.folded ||
-                 this.inner_leaflet.visible_child_name == CONVERSATION_LIST)
-            );
-        }
+        get { return true; }
     }
 
     /** Specifies if the conversation viewer is currently displayed. */
     public bool is_conversation_viewer_shown {
-        get {
-            return (
-                (!this.outer_leaflet.folded ||
-                 this.outer_leaflet.visible_child_name == CONVERSATION_VIEWER) &&
-                !this.has_composer
-            );
-        }
+        get { return !this.has_composer; }
     }
 
     /** The attachment manager for this window. */
@@ -394,11 +373,11 @@ public class Application.MainWindow :
     [GtkChild] private unowned Components.ConversationListHeaderBar conversation_list_headerbar;
     [GtkChild] public unowned Components.ConversationHeaderBar conversation_headerbar;
 
-    // Folds the inner leaftlet and conversation viewer
-    [GtkChild] private unowned Hdy.Leaflet outer_leaflet;
+    // Resizable pane containing inner_paned and conversation viewer
+    [GtkChild] private unowned Gtk.Paned outer_paned;
 
-    // Folds the folder list and the conversation list
-    [GtkChild] private unowned Hdy.Leaflet inner_leaflet;
+    // Resizable pane containing folder list and conversation list
+    [GtkChild] private unowned Gtk.Paned inner_paned;
 
     [GtkChild] private unowned Gtk.ScrolledWindow folder_list_scrolled;
 
@@ -514,7 +493,7 @@ public class Application.MainWindow :
     /** Keybinding signal for escaping current view. */
     [Signal (action=true)]
     public virtual signal void escape() {
-        navigate_previous_pane();
+        focus_previous_pane();
     }
 
     /** Keybinding signal for selecting all elements in current view. */
@@ -867,7 +846,7 @@ public class Application.MainWindow :
         // The folder may have changed again by the type the async
         // call returns, so only continue if still current
         if (this.selected_folder == location) {
-            navigate_next_pane();
+            focus_next_pane();
             // Since conversation ids don't persist between
             // conversation monitor instances, need to load
             // conversations based on their messages.
@@ -902,7 +881,7 @@ public class Application.MainWindow :
         if (this.selected_folder == location) {
             var loaded = yield load_conversations_for_email(location, to_show);
 
-            navigate_next_pane();
+            focus_next_pane();
             if (loaded.size == 1) {
                 // A single conversation was loaded, so ensure we
                 // scroll to the email in the conversation.
@@ -937,24 +916,11 @@ public class Application.MainWindow :
 
     /** Shows the appopriate window menu, if any. */
     public void show_window_menu() {
-        if (this.outer_leaflet.folded) {
-            this.outer_leaflet.navigate(Hdy.NavigationDirection.BACK);
-        }
-        if (this.inner_leaflet.folded) {
-            this.inner_leaflet.navigate(Hdy.NavigationDirection.BACK);
-        }
         this.application_headerbar.show_app_menu();
     }
 
     /** Displays and focuses the search bar for the window. */
     public void show_search_bar(string? text = null) {
-        if (!this.is_conversation_list_shown) {
-            if (this.outer_leaflet.folded) {
-                this.outer_leaflet.set_visible_child_name(INNER_LEAFLET);
-            }
-            this.inner_leaflet.set_visible_child_name(CONVERSATION_LIST);
-        }
-
         this.search_bar.grab_focus();
         if (text != null) {
             this.search_bar.entry.text = text;
@@ -999,8 +965,7 @@ public class Application.MainWindow :
             } else {
                 this.conversation_viewer.do_compose(composer);
             }
-            // Show the correct leaflet
-            this.outer_leaflet.set_visible_child_name(CONVERSATION_VIEWER);
+            // Conversation viewer is always visible with paned layout
         }
     }
 
@@ -1236,6 +1201,8 @@ public class Application.MainWindow :
         config.bind(Configuration.WINDOW_WIDTH_KEY, this, "window-width");
         config.bind(Configuration.WINDOW_HEIGHT_KEY, this, "window-height");
         config.bind(Configuration.WINDOW_MAXIMIZE_KEY, this, "window-maximized");
+        config.bind(Configuration.FOLDER_PANE_POSITION, this.inner_paned, "position");
+        config.bind(Configuration.CONVERSATION_PANE_POSITION, this.outer_paned, "position");
     }
 
     private void restore_saved_window_state() {
@@ -1366,8 +1333,7 @@ public class Application.MainWindow :
         this.conversation_list_headerbar.notify["selection-open"].connect(
             () => {
                 if (this.conversation_list_view.selection_mode_enabled)
-                    this.conversation_list_actions_revealer.reveal_child = (
-                        this.outer_leaflet.folded);
+                    this.conversation_list_actions_revealer.reveal_child = false;
                 else
                     this.conversation_list_actions_revealer.reveal_child = false;
             }
@@ -1718,57 +1684,21 @@ public class Application.MainWindow :
     }
 
     private void on_conversations_selected(Gee.Set<Geary.App.Conversation> selected) {
-        bool folded = this.outer_leaflet.folded;
-        // If folded, selection handled by activate
-        if (selected.size > 1 || !folded) {
-            select_conversations.begin(selected, Gee.Collection.empty(), true);
-        } else if (folded) {
-            switch(selected.size) {
-            case 0:
-                update_conversation_actions(NONE);
-                break;
-            case 1:
-                update_conversation_actions(SINGLE);
-                break;
-            default:
-                update_conversation_actions(MULTIPLE);
-                break;
-            }
-        }
-
-        if (this.conversation_list_view.selection_mode_enabled) {
-            if (selected.size > 0) {
-                this.conversation_list_actions_revealer.reveal_child = folded;
-            } else {
-                this.conversation_list_actions_revealer.reveal_child = false;
-            }
-        }
+        // All panes always visible with paned layout
+        select_conversations.begin(selected, Gee.Collection.empty(), true);
     }
 
     private void update_close_button_position() {
         bool at_end = Util.Gtk.close_button_at_end();
 
-        this.application_headerbar.show_close_button = (
-            this.inner_leaflet.folded || !at_end
-        );
-        this.conversation_list_headerbar.show_close_button = (
-            this.inner_leaflet.folded || (at_end && this.outer_leaflet.folded)
-        );
-        this.conversation_headerbar.show_close_button = (
-            this.outer_leaflet.folded || at_end
-        );
+        this.application_headerbar.show_close_button = !at_end;
+        this.conversation_list_headerbar.show_close_button = false;
+        this.conversation_headerbar.show_close_button = at_end;
     }
 
     private void on_conversation_activated(Geary.App.Conversation activated, uint button) {
         if (button == 1) {
-            bool folded = this.outer_leaflet.folded;
-            if (folded) {
-                Gee.Collection<Geary.App.Conversation> selected =
-                    new Gee.ArrayList<Geary.App.Conversation>();
-                selected.add(activated);
-                select_conversations.begin(selected, Gee.Collection.empty(), true);
-            }
-            go_to_next_pane(true);
+            // Paned layout: all panes always visible, nothing extra needed
         } else if (this.selected_folder != null) {
             if (this.selected_folder.used_as != DRAFTS) {
                 this.application.new_window.begin(
@@ -1966,25 +1896,6 @@ public class Application.MainWindow :
         }
     }
 
-    private void navigate_next_pane() {
-        var focus = get_focus();
-        if (this.outer_leaflet.visible_child_name == INNER_LEAFLET) {
-            if (this.inner_leaflet.folded &&
-                this.inner_leaflet.visible_child_name == FOLDER_LIST ||
-                focus == this.folder_list) {
-                this.inner_leaflet.navigate(Hdy.NavigationDirection.FORWARD);
-                focus = this.conversation_list_view;
-            } else {
-                if (this.conversation_list_view.selected.size == 1 &&
-                    this.selected_folder.properties.email_total > 0) {
-                    this.outer_leaflet.navigate(Hdy.NavigationDirection.FORWARD);
-                    focus = this.conversation_viewer.visible_child;
-                }
-            }
-        }
-        focus_widget(focus);
-    }
-
     private void focus_next_pane() {
         var focus = get_focus();
         if (focus != null) {
@@ -2003,33 +1914,9 @@ public class Application.MainWindow :
     }
 
     private void go_to_next_pane(bool only_if_folded=false) {
-        if (this.outer_leaflet.folded) {
-            navigate_next_pane();
-        } else if (!only_if_folded) {
+        if (!only_if_folded) {
             focus_next_pane();
         }
-    }
-
-    private void navigate_previous_pane() {
-        var focus = get_focus();
-        if (this.outer_leaflet.visible_child_name == INNER_LEAFLET) {
-            if (this.inner_leaflet.folded) {
-                if (this.inner_leaflet.visible_child_name == CONVERSATION_LIST) {
-                    this.inner_leaflet.navigate(Hdy.NavigationDirection.BACK);
-                    focus = this.folder_list;
-                }
-            } else {
-                 if (focus == this.conversation_list_view ||
-                     focus.is_ancestor(this.conversation_list_view))
-                    focus = this.folder_list;
-                else
-                    focus = this.conversation_list_view;
-            }
-        } else {
-            this.outer_leaflet.navigate(Hdy.NavigationDirection.BACK);
-            focus = this.conversation_list_view;
-        }
-        focus_widget(focus);
     }
 
     private void focus_previous_pane() {
@@ -2050,11 +1937,7 @@ public class Application.MainWindow :
     }
 
     private void go_to_previous_pane() {
-        if (this.outer_leaflet.folded) {
-            navigate_previous_pane();
-        } else {
-            focus_previous_pane();
-        }
+        focus_previous_pane();
     }
 
     private SimpleAction get_window_action(string name) {
@@ -2074,17 +1957,7 @@ public class Application.MainWindow :
     }
 
     private void reply_conversation(Composer.Widget.ContextType context_type) {
-        if (this.outer_leaflet.folded) {
-            this.conversation_list_view.activate_selected();
-            navigate_next_pane();
-            // This is a lot of async actions, delay composer creation
-            GLib.Timeout.add(500, () => {
-              this.create_composer_from_viewer.begin(context_type);
-              return Source.REMOVE;
-            });
-        } else {
-            this.create_composer_from_viewer.begin(context_type);
-        }
+        this.create_composer_from_viewer.begin(context_type);
     }
 
     private void on_scan_completed(Geary.App.ConversationMonitor monitor) {
@@ -2146,56 +2019,14 @@ public class Application.MainWindow :
         return Gdk.EVENT_STOP;
     }
 
-    [GtkCallback]
-    private void on_outer_leaflet_changed() {
+    private void update_paned_state() {
         int selected = this.conversation_list_view.selected.size;
         update_conversation_actions(
             ConversationCount.for_size(selected)
         );
         update_close_button_position();
-        if (this.outer_leaflet.folded) {
-            // Ensure something useful gets the keyboard focus, given
-            // GNOME/libhandy#179
-            if (this.is_conversation_list_shown) {
-                this.conversation_list_view.grab_focus();
-            } else if (this.is_folder_list_shown) {
-                this.folder_list.grab_focus();
-            } else {
-                this.conversation_headerbar.back_button.visible = true;
-            }
-
-            // Close any open composer that is no longer visible
-            if (this.has_composer &&
-                (this.is_folder_list_shown || this.is_conversation_list_shown)) {
-                close_composer(false, false);
-            }
-        } else {
-            this.conversation_headerbar.back_button.visible = false;
-            if (selected > 0) {
-                select_conversations.begin(
-                    this.conversation_list_view.selected,
-                    Gee.Collection.empty<Geary.EmailIdentifier>(),
-                    false
-                );
-            }
-        }
-    }
-
-    [GtkCallback]
-    private void on_inner_leaflet_changed() {
-        update_close_button_position();
-        if (this.inner_leaflet.folded) {
-            // Ensure something useful gets the keyboard focus, given
-            // GNOME/libhandy#179
-            if (this.is_conversation_list_shown) {
-                this.conversation_list_headerbar.back_button.visible = true;
-                this.conversation_list_view.grab_focus();
-            } else if (this.is_folder_list_shown) {
-                this.folder_list.grab_focus();
-            }
-        } else {
-            this.conversation_list_headerbar.back_button.visible = false;
-        }
+        this.conversation_headerbar.back_button.visible = false;
+        this.conversation_list_headerbar.back_button.visible = false;
     }
 
     private void on_offline_infobar_response() {

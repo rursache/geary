@@ -291,7 +291,7 @@ public class ConversationEmail : Gtk.Box, Geary.BaseInterface {
 
         this.primary_message = new ConversationMessage.from_email(
             email,
-            email.load_remote_images().is_certain(),
+            this.config.always_load_remote_images || email.load_remote_images().is_certain(),
             this.contacts,
             this.config
         );
@@ -700,7 +700,7 @@ public class ConversationEmail : Gtk.Box, Geary.BaseInterface {
             ConversationMessage attached_message =
                 new ConversationMessage.from_message(
                     sub_message,
-                    this.email.load_remote_images().is_certain(),
+                    this.config.always_load_remote_images || this.email.load_remote_images().is_certain(),
                     this.contacts,
                     this.config
                 );

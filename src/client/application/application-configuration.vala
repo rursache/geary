@@ -32,6 +32,9 @@ public class Application.Configuration : Geary.BaseObject {
     public const string WINDOW_MAXIMIZE_KEY = "window-maximize";
     public const string WINDOW_WIDTH_KEY = "window-width";
     public const string IMAGES_TRUSTED_DOMAINS = "images-trusted-domains";
+    public const string ALWAYS_LOAD_REMOTE_IMAGES = "always-load-remote-images";
+    public const string FOLDER_PANE_POSITION = "folder-pane-position";
+    public const string CONVERSATION_PANE_POSITION = "conversation-pane-position";
 
 
     public enum DesktopEnvironment {
@@ -134,6 +137,11 @@ public class Application.Configuration : Geary.BaseObject {
     public double conversation_viewer_zoom {
         get { return settings.get_double(CONVERSATION_VIEWER_ZOOM_KEY); }
         set { settings.set_double(CONVERSATION_VIEWER_ZOOM_KEY, value); }
+    }
+
+    public bool always_load_remote_images {
+        get { return settings.get_boolean(ALWAYS_LOAD_REMOTE_IMAGES); }
+        set { settings.set_boolean(ALWAYS_LOAD_REMOTE_IMAGES, value); }
     }
 
     /** The number of seconds to wait before sending an email. */
